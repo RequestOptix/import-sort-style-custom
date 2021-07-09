@@ -13,6 +13,7 @@ import {
 const defaultSettings: CustomSettings = {
   ignoreTsConfig: false,
   spaceAfterAliases: true,
+  spaceBeforeBottom: true,
   tsconfigName: 'tsconfig.json',
   tsconfigFilePath: undefined,
   cacheStrategy: CacheStrategy.Directory,
@@ -77,6 +78,14 @@ export interface CustomSettings {
    * @default true
    */
   spaceAfterAliases: boolean;
+
+  /**
+   * When true this will insert a space before the bottom section causing the
+   * bottom imports to appear as a separate block.
+   *
+   * @default true
+   */
+  spaceBeforeBottom: boolean;
 
   /**
    * Ignore all paths that match this pattern. This takes preference over any
@@ -296,7 +305,8 @@ const sortStyleCustom: IStyle = (styleApi, fileName, rawSettings) => {
       sort: [dotSegmentCount, moduleName(naturally)],
       sortNamedMembers: alias(unicode),
     },
-    { separator: true },
+
+    ...(settings.spaceBeforeBottom ? [{ separator: true }] : []),
 
     // Bottom
     {

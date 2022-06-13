@@ -21,6 +21,7 @@ const defaultSettings: CustomSettings = {
   ignoredAliases: [],
   extraAliases: [],
   bottomAliases: [],
+  topAliases: [],
 };
 
 /**
@@ -104,6 +105,8 @@ export interface CustomSettings {
    * wildcard character.
    */
   bottomAliases: string[];
+
+  topAliases: string[];
 }
 
 const getSettings = (rawSettings: object = {}): CustomSettings => {
@@ -246,14 +249,15 @@ const sortStyleCustom: IStyle = (styleApi, fileName, rawSettings) => {
   const config = settings.ignoreTsConfig
     ? undefined
     : tsconfigResolver({
-        cacheStrategy: settings.cacheStrategy,
-        cwd: fileName ? dirname(fileName) : undefined,
-        searchName: settings.tsconfigName,
-        filePath: settings.tsconfigFilePath,
-      }).config;
+      cacheStrategy: settings.cacheStrategy,
+      cwd: fileName ? dirname(fileName) : undefined,
+      searchName: settings.tsconfigName,
+      filePath: settings.tsconfigFilePath,
+    }).config;
 
   const isAliasedModule = isAliasedModuleCreator(settings, config);
   const isBottomModule = isBottomModuleCreator(settings.bottomAliases);
+  const isTopModule = isBottomModuleCreator(settings.topAliases);
 
   const {
     alias,
@@ -267,11 +271,12 @@ const sortStyleCustom: IStyle = (styleApi, fileName, rawSettings) => {
     naturally,
     unicode,
     not,
+    or
   } = styleApi;
 
   return [
     // No member - `import "foo"; import "./foo"; import "$aliased";`
-    { match: and(hasNoMember, not(isBottomModule)) }, // No sorting here since these can have side effects.
+    { match: and(hasNoMember, not(isBottomModule), not(isTopModule)) }, // No sorting here since these can have side effects.
     { separator: true },
 
     // Builtin - `import … from "fs";`
@@ -284,7 +289,7 @@ const sortStyleCustom: IStyle = (styleApi, fileName, rawSettings) => {
 
     // Absolute - `import … from "foo";`
     {
-      match: and(isAbsoluteModule, not(isBottomModule), not(isAliasedModule)),
+      match: or(and(isAbsoluteModule, not(isBottomModule), not(isAliasedModule)), isTopModule),
       sort: moduleName(naturally),
       sortNamedMembers: alias(unicode),
     },
@@ -292,7 +297,7 @@ const sortStyleCustom: IStyle = (styleApi, fileName, rawSettings) => {
 
     // Aliased - `import … from "$aliased";`
     {
-      match: and(not(isRelativeModule), not(isBottomModule), isAliasedModule),
+      match: and(not(isRelativeModule), not(isBottomModule), not(isTopModule), isAliasedModule),
       sort: moduleName(naturally),
       sortNamedMembers: alias(unicode),
     },
@@ -310,7 +315,7 @@ const sortStyleCustom: IStyle = (styleApi, fileName, rawSettings) => {
 
     // Bottom
     {
-      match: and(isBottomModule, not(isRelativeModule)),
+      match: and(isBottomModule, not(isRelativeModule), not(isTopModule)),
       sort: [dotSegmentCount, moduleName(naturally)],
       sortNamedMembers: alias(unicode),
     },
